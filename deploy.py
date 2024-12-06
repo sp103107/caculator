@@ -3,7 +3,6 @@ import json
 import subprocess
 import requests
 from pathlib import Path
-from getpass import getpass
 from datetime import datetime
 import time
 
@@ -11,15 +10,11 @@ class HuggingFaceDeployer:
     def __init__(self):
         self.space_name = "sp103107/canna_calc"
         self.api_url = f"https://huggingface.co/spaces/{self.space_name}"
-        self.token = self._get_token()
-        self.current_dir = Path.cwd()
-
-    def _get_token(self):
-        """Get token from environment or user input"""
-        token = os.getenv('HF_TOKEN') or getpass("Enter your Hugging Face token: ").strip()
-        if not token:
+        print("\n🔑 Get your token from: https://huggingface.co/settings/tokens")
+        self.token = input("Enter your Hugging Face token: ").strip()
+        if not self.token:
             raise ValueError("Token cannot be empty")
-        return token
+        self.current_dir = Path.cwd()
 
     def _run_git(self, command, timeout=60, **kwargs):
         """Run git command with proper error handling"""
@@ -51,10 +46,9 @@ class HuggingFaceDeployer:
         try:
             print("\n🚀 Starting deployment...")
 
-            # Configure git
-            print("\nConfiguring git...")
-            self._run_git(['config', 'user.email', "huggingface-deployer@example.com"])
-            self._run_git(['config', 'user.name', "HuggingFace Deployer"])
+            # Remove git credentials
+            print("\nRemoving git credentials...")
+            self._run_git(['config', '--unset-all', 'credential.helper'])
 
             # Remove existing remote
             print("\nRemoving existing remote...")
@@ -85,7 +79,6 @@ class HuggingFaceDeployer:
             # Push with longer timeout
             print("\nPushing to Hugging Face (this may take a minute)...")
             try:
-                # First attempt - using git push
                 push_result = self._run_git(['push', '-f', 'origin', 'main'], timeout=120)
                 
                 if push_result.returncode == 0:
@@ -99,7 +92,7 @@ class HuggingFaceDeployer:
 
             except subprocess.TimeoutExpired:
                 print("\n⚠️ Push timed out, checking space status...")
-                time.sleep(5)  # Wait a bit before checking status
+                time.sleep(5)
                 return self.check_status()
 
         except Exception as e:
@@ -128,25 +121,31 @@ def main():
     print("🌱 Hugging Face Space Deployer")
     print("==============================")
     
-    deployer = HuggingFaceDeployer()
+    try:
+        deployer = HuggingFaceDeployer()
+        
+        while True:
+            print("\nOptions:")
+            print("1. Deploy to Hugging Face")
+            print("2. Check deployment status")
+            print("3. Exit")
+            
+            choice = input("\nEnter your choice (1-3): ")
+            
+            if choice == '1':
+                deployer.deploy()
+            elif choice == '2':
+                deployer.check_status()
+            elif choice == '3':
+                print("\nGoodbye! 👋")
+                break
+            else:
+                print("\nInvalid choice. Please try again.")
     
-    while True:
-        print("\nOptions:")
-        print("1. Deploy to Hugging Face")
-        print("2. Check deployment status")
-        print("3. Exit")
-        
-        choice = input("\nEnter your choice (1-3): ")
-        
-        if choice == '1':
-            deployer.deploy()
-        elif choice == '2':
-            deployer.check_status()
-        elif choice == '3':
-            print("\nGoodbye! 👋")
-            break
-        else:
-            print("\nInvalid choice. Please try again.")
+    except KeyboardInterrupt:
+        print("\n\nDeployment cancelled. Goodbye! 👋")
+    except Exception as e:
+        print(f"\n❌ Error: {str(e)}")
 
 if __name__ == "__main__":
     main() 
