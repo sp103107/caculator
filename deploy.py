@@ -45,49 +45,55 @@ class HuggingFaceDeployer:
         try:
             print("\n🚀 Starting deployment...")
 
-            # Initialize repository if needed
-            if not (self.current_dir / '.git').exists():
-                print("Initializing git repository...")
-                self._run_git(['git', 'init'])
+            # Check what files are being tracked
+            print("\nChecking git status...")
+            status_result = self._run_git(['git', 'status'])
+            print(status_result.stdout)
 
-            # Configure git
-            print("Configuring git...")
-            self._run_git(['git', 'config', 'user.email', "huggingface-deployer@example.com"])
-            self._run_git(['git', 'config', 'user.name', "HuggingFace Deployer"])
-
-            # Set up remote
-            print("Setting up remote...")
-            remote_url = f"https://{self.token}@huggingface.co/spaces/{self.space_name}"
+            # Stage specific files
+            print("\nStaging files...")
+            files_to_track = [
+                'app.py',
+                'deploy.py',
+                'requirements.txt',
+                'static/',
+                'README.md',
+                '.gitignore'
+            ]
             
-            # Remove existing remote if any
-            self._run_git(['git', 'remote', 'remove', 'origin'], check=False)
-            
-            # Add new remote
-            self._run_git(['git', 'remote', 'add', 'origin', remote_url])
+            for file in files_to_track:
+                try:
+                    self._run_git(['git', 'add', file])
+                    print(f"Added {file}")
+                except Exception as e:
+                    print(f"Warning: Could not add {file}: {str(e)}")
 
-            # Stage all files
-            print("Staging files...")
-            self._run_git(['git', 'add', '-A'])
+            # Show what's being committed
+            status_after = self._run_git(['git', 'status'])
+            print("\nFiles to be committed:")
+            print(status_after.stdout)
 
             # Commit changes
-            print("Committing changes...")
+            print("\nCommitting changes...")
             commit_msg = f"Deployment {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            self._run_git(['git', 'commit', '-m', commit_msg, '--allow-empty'])
+            commit_result = self._run_git(['git', 'commit', '-m', commit_msg, '--allow-empty'])
+            print(commit_result.stdout)
 
             # Push to Hugging Face
             print("\nPushing to Hugging Face...")
-            result = self._run_git(
+            push_result = self._run_git(
                 ['git', 'push', '-f', 'origin', 'main'],
                 check=True
             )
+            print(push_result.stdout)
 
-            if result.returncode == 0:
+            if push_result.returncode == 0:
                 print("\n✅ Deployment successful!")
                 print(f"🌐 Visit your space at: {self.api_url}")
                 return True
             else:
                 print("\n❌ Push failed!")
-                print("Error output:", result.stderr)
+                print("Error output:", push_result.stderr)
                 return False
 
         except Exception as e:
