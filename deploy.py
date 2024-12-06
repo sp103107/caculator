@@ -5,6 +5,7 @@ from pathlib import Path
 from getpass import getpass
 import requests
 from datetime import datetime
+import shlex
 
 class HuggingFaceDeployer:
     def __init__(self):
@@ -13,6 +14,7 @@ class HuggingFaceDeployer:
         self.space_name = "sp103107/canna_calc"
         self.api_url = f"https://huggingface.co/spaces/{self.space_name}"
         self.token = self._get_token()
+        self.current_dir = Path.cwd()
 
     def _get_token(self):
         """Get token from cache or user input"""
@@ -55,10 +57,16 @@ class HuggingFaceDeployer:
         if missing_files:
             raise FileNotFoundError(f"Missing required files: {', '.join(missing_files)}")
 
+    def _run_command(self, command, **kwargs):
+        """Run command with proper path handling"""
+        if isinstance(command, str):
+            command = shlex.split(command)
+        return subprocess.run(command, cwd=str(self.current_dir), **kwargs)
+
     def deploy(self):
-        """Deploy to Hugging Face Spaces"""
         try:
             print("🚀 Starting deployment process...")
+            print(f"Working directory: {self.current_dir}")
             
             # Verify files
             self._check_files_exist()
@@ -68,23 +76,20 @@ class HuggingFaceDeployer:
             self._check_git_repo()
             print("✅ Git repository configured")
             
-            # Configure git credentials
-            subprocess.run(['git', 'config', '--global', 'credential.helper', 'store'])
+            # Force add all files
+            self._run_command('git add -A')
             
-            # Add files
-            subprocess.run(['git', 'add', '.'])
+            # Force a commit even if nothing changed
+            commit_msg = f"Force deployment {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            self._run_command(['git', 'commit', '-m', commit_msg, '--allow-empty'])
             
-            # Commit
-            commit_msg = f"Update deployment {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            subprocess.run(['git', 'commit', '-m', commit_msg])
-            
-            # Push to Hugging Face
-            push_command = [
-                'git', 'push',
-                f'https://{self.token}@huggingface.co/spaces/{self.space_name}',
-                'main'
-            ]
-            result = subprocess.run(push_command, capture_output=True, text=True)
+            # Force push to Hugging Face
+            push_url = f'https://{self.token}@huggingface.co/spaces/{self.space_name}'
+            result = self._run_command(
+                ['git', 'push', '-f', push_url, 'main'],
+                capture_output=True,
+                text=True
+            )
             
             if result.returncode == 0:
                 print("✅ Deployment successful!")
