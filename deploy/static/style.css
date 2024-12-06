@@ -1,0 +1,338 @@
+/* Professional Color Scheme */
+:root {
+    --primary: #1a5f7a;
+    --secondary: #2c8aa7;
+    --accent: #34a8cd;
+    --background: #f5f7f9;
+    --text: #2c3e50;
+    --border: #e1e8ed;
+    --success: #27ae60;
+    --warning: #f39c12;
+    --error: #e74c3c;
+    --card-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Global Styles */
+.stApp {
+    background-color: var(--background);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+}
+
+/* Cards */
+.calculator-card, .results-card, .strain-card, .metric-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--card-shadow);
+}
+
+.calculator-card {
+    background: linear-gradient(to bottom right, #ffffff, #f8f9fa);
+}
+
+.results-card {
+    background: linear-gradient(to bottom right, #f8f9fa, #f1f3f5);
+}
+
+/* Headers */
+h1, h2, h3, h4 {
+    color: var(--primary);
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+/* Inputs */
+.stSelectbox, .stNumberInput {
+    margin-bottom: 1.5rem;
+}
+
+/* Unit Selector */
+.unit-selector {
+    display: flex;
+    gap: 1rem;
+    background: #f8f9fa;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    margin: 1rem 0;
+}
+
+.unit-selector label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    background: white;
+    border: 1px solid var(--border);
+    color: var(--text);
+    transition: all 0.2s ease;
+}
+
+.unit-selector input[type="radio"] {
+    display: none;
+}
+
+.unit-selector input[type="radio"]:checked + label {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* Metric Cards */
+.metric-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    padding: 1rem;
+    margin: 0.5rem 0;
+    border-radius: 6px;
+    border-left: 4px solid var(--primary);
+}
+
+.metric-card h4 {
+    margin: 0;
+    color: var(--text);
+    font-size: 1rem;
+}
+
+.metric-card p {
+    margin: 0;
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+/* Growth Stage Slider */
+.stSlider {
+    margin: 2rem 0;
+}
+
+.stSlider > div {
+    margin-bottom: 0.5rem;
+}
+
+/* Strain Cards */
+.strain-card {
+    background: white;
+    border-left: 4px solid var(--accent);
+    padding: 1rem;
+    margin: 0.5rem 0;
+}
+
+.strain-card h4 {
+    color: var(--text);
+    margin: 0 0 0.5rem 0;
+}
+
+.strain-card p {
+    margin: 0.25rem 0;
+    color: var(--text);
+    opacity: 0.8;
+}
+
+/* Buttons */
+.stButton > button {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.5rem 1.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.stButton > button:hover {
+    background: var(--secondary);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Status Indicators */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-optimal {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-alert {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Professional Tables */
+.styled-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.styled-table th {
+    background: var(--primary);
+    color: white;
+    padding: 1rem;
+    text-align: left;
+}
+
+.styled-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.styled-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Sidebar Customization */
+.css-1d391kg {  /* Sidebar */
+    background: white;
+    border-right: 1px solid var(--border);
+}
+
+/* Dark Mode Adjustments */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background: #1a1a1a;
+        --text: #e1e1e1;
+        --border: #333333;
+        --card-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .calculator-card, .results-card, .strain-card, .metric-card {
+        background: #2d2d2d;
+    }
+
+    .unit-selector {
+        background: #2d2d2d;
+    }
+
+    .unit-selector label {
+        background: #3d3d3d;
+        color: var(--text);
+    }
+}
+
+/* Print Styles */
+@media print {
+    .calculator-card, .results-card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+
+    .stButton, .sidebar {
+        display: none;
+    }
+}
+
+/* Recipe Instructions */
+.instruction-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--card-shadow);
+}
+
+.instruction-card h3 {
+    color: var(--primary);
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.5rem;
+}
+
+.instruction-card.safety {
+    border-left: 4px solid var(--warning);
+}
+
+.instruction-card.primary_mix {
+    border-left: 4px solid var(--primary);
+}
+
+.instruction-card.supplements {
+    border-left: 4px solid var(--secondary);
+}
+
+.instruction-card.final {
+    border-left: 4px solid var(--success);
+}
+
+.instruction-card.troubleshooting {
+    border-left: 4px solid var(--error);
+}
+
+.instruction-card ol, .instruction-card ul {
+    padding-left: 1.5rem;
+    margin: 1rem 0;
+}
+
+.instruction-card li {
+    margin: 0.5rem 0;
+    line-height: 1.5;
+}
+
+/* Parameter Tables */
+.parameter-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+
+.parameter-table th {
+    background: var(--primary);
+    color: white;
+    padding: 0.75rem;
+    text-align: left;
+}
+
+.parameter-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.parameter-table tr:nth-child(even) {
+    background: #f8f9fa;
+}
+
+/* Status Indicators */
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-badge.optimal {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge.caution {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.warning {
+    background: #f8d7da;
+    color: #721c24;
+} 

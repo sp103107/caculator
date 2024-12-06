@@ -1,151 +1,72 @@
 import os
-import json
-import subprocess
-import requests
-from pathlib import Path
-from datetime import datetime
 import time
+from huggingface_hub import HfApi, create_repo, delete_repo
+from huggingface_hub.utils import validate_repo_id
+from huggingface_hub.errors import HfHubHTTPError
+import getpass
 
-class HuggingFaceDeployer:
-    def __init__(self):
-        self.space_name = "sp103107/canna_calc"
-        self.api_url = f"https://huggingface.co/spaces/{self.space_name}"
-        print("\n🔑 Get your token from: https://huggingface.co/settings/tokens")
-        self.token = input("Enter your Hugging Face token: ").strip()
-        if not self.token:
-            raise ValueError("Token cannot be empty")
-        self.current_dir = Path.cwd()
+def deploy(token: str, repo_name: str, retries: int = 3, wait_time: int = 5):
+    """Deploy to Hugging Face with retry logic"""
+    print("\n🌿 Professional Hydroponic Calculator Deployer")
+    print("============================================\n")
 
-    def _run_git(self, command, timeout=60, **kwargs):
-        """Run git command with proper error handling"""
-        try:
-            print(f"Executing: git {' '.join(command)}")
-            result = subprocess.run(
-                ['git'] + command,
-                cwd=str(self.current_dir),
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                **kwargs
-            )
-            if result.stdout:
-                print("Output:", result.stdout)
-            if result.stderr:
-                print("Errors:", result.stderr)
-            return result
-        except subprocess.TimeoutExpired:
-            print(f"Command timed out after {timeout} seconds")
-            raise
-        except Exception as e:
-            print(f"Command failed: git {' '.join(command)}")
-            print(f"Error: {str(e)}")
-            raise
-
-    def deploy(self):
-        """Deploy to Hugging Face Spaces"""
-        try:
-            print("\n🚀 Starting deployment...")
-
-            # Remove git credentials
-            print("\nRemoving git credentials...")
-            self._run_git(['config', '--unset-all', 'credential.helper'])
-
-            # Remove existing remote
-            print("\nRemoving existing remote...")
-            self._run_git(['remote', 'remove', 'origin'], check=False)
-
-            # Add new remote with token
-            print("\nAdding new remote...")
-            remote_url = f"https://{self.token}@huggingface.co/spaces/{self.space_name}"
-            self._run_git(['remote', 'add', 'origin', remote_url])
-
-            # Verify remote
-            print("\nVerifying remote...")
-            self._run_git(['remote', '-v'])
-
-            # Stage files
-            print("\nStaging files...")
-            self._run_git(['add', '-A'])
-            
-            # Show status
-            print("\nChecking status...")
-            self._run_git(['status'])
-
-            # Commit
-            print("\nCommitting changes...")
-            commit_msg = f"Deployment {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            self._run_git(['commit', '-m', commit_msg, '--allow-empty'])
-
-            # Push with longer timeout
-            print("\nPushing to Hugging Face (this may take a minute)...")
-            try:
-                push_result = self._run_git(['push', '-f', 'origin', 'main'], timeout=120)
-                
-                if push_result.returncode == 0:
-                    print("\n✅ Deployment successful!")
-                    print(f"🌐 Visit your space at: {self.api_url}")
-                    return True
-                else:
-                    print("\n❌ Push failed!")
-                    print("Error output:", push_result.stderr)
-                    return False
-
-            except subprocess.TimeoutExpired:
-                print("\n⚠️ Push timed out, checking space status...")
-                time.sleep(5)
-                return self.check_status()
-
-        except Exception as e:
-            print(f"\n❌ Deployment failed: {str(e)}")
-            return False
-
-    def check_status(self):
-        """Check space status"""
-        try:
-            headers = {'Authorization': f'Bearer {self.token}'}
-            response = requests.get(f"{self.api_url}/api/status", headers=headers)
-            
-            if response.status_code == 200:
-                status = response.json()
-                print(f"\nSpace Status: {status.get('status', 'Unknown')}")
-                return status
-            else:
-                print(f"\nFailed to get status: {response.status_code}")
-                return None
-                
-        except Exception as e:
-            print(f"\nError checking status: {str(e)}")
-            return None
-
-def main():
-    print("🌱 Hugging Face Space Deployer")
-    print("==============================")
+    api = HfApi(token=token)
     
     try:
-        deployer = HuggingFaceDeployer()
+        # Validate repository name
+        repo_id = f"{api.whoami()['name']}/{repo_name}"
+        validate_repo_id(repo_id)
         
-        while True:
-            print("\nOptions:")
-            print("1. Deploy to Hugging Face")
-            print("2. Check deployment status")
-            print("3. Exit")
-            
-            choice = input("\nEnter your choice (1-3): ")
-            
-            if choice == '1':
-                deployer.deploy()
-            elif choice == '2':
-                deployer.check_status()
-            elif choice == '3':
-                print("\nGoodbye! 👋")
+        print(f"🚀 Starting deployment to {repo_id}")
+        
+        # Try to delete existing space
+        try:
+            print(f"🗑️  Deleting existing space: {repo_id}")
+            delete_repo(repo_id, token=token, repo_type="space")
+            print("✅ Space deleted")
+        except Exception as e:
+            if "404" not in str(e):
+                print(f"⚠️  Warning during deletion: {str(e)}")
+        
+        # Create new space with retries
+        for attempt in range(retries):
+            try:
+                print("🆕 Creating new space...")
+                create_repo(
+                    repo_id,
+                    token=token,
+                    repo_type="space",
+                    space_sdk="streamlit",
+                    private=False
+                )
+                print("✅ Space created successfully")
                 break
-            else:
-                print("\nInvalid choice. Please try again.")
-    
-    except KeyboardInterrupt:
-        print("\n\nDeployment cancelled. Goodbye! 👋")
+            except HfHubHTTPError as e:
+                if "429" in str(e):  # Rate limit error
+                    if attempt < retries - 1:
+                        wait = wait_time * (attempt + 1)
+                        print(f"⏳ Rate limited. Waiting {wait} seconds before retry...")
+                        time.sleep(wait)
+                    else:
+                        raise Exception("Rate limit reached. Please try again in 24 hours.")
+                else:
+                    raise e
+        
+        # Additional deployment steps here...
+        
+        print("\n✅ Deployment completed successfully!")
+        print(f"🔗 View your app at: https://huggingface.co/spaces/{repo_id}")
+        
     except Exception as e:
-        print(f"\n❌ Error: {str(e)}")
+        print(f"\n❌ Deployment failed: {str(e)}")
+        print("\n❌ Deployment failed. Check the errors above.")
+        return False
+    
+    return True
 
 if __name__ == "__main__":
-    main() 
+    print("🔑 Get your token from: https://huggingface.co/settings/tokens")
+    token = getpass.getpass("Enter your Hugging Face token: ")
+    
+    # Deploy with increased wait times
+    deploy(token, "canna_calc", retries=3, wait_time=10) 

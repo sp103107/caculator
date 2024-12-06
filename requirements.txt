@@ -1,5 +1,8 @@
-streamlit>=1.24.0
-pandas
-plotly
-streamlit-option-menu
-streamlit-custom-notification-box 
+streamlit==1.24.0
+pandas==2.0.2
+numpy==1.24.3
+requests==2.31.0
+plotly==5.18.0
+scikit-learn==1.3.2
+scipy==1.11.4
+huggingface-hub>=0.19.4
