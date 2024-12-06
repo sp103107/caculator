@@ -88,45 +88,65 @@ class HuggingFaceDeployer:
             commit_msg = f"Force deployment {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             self._run_command(['git', 'commit', '-m', commit_msg, '--allow-empty'])
             
-            # Set up remote
+            # Set up remote with verification
             print("Setting up remote...")
-            self._run_command(['git', 'remote', 'remove', 'hf'], check=False)
             push_url = f'https://{self.token}@huggingface.co/spaces/{self.space_name}'
-            self._run_command(['git', 'remote', 'add', 'hf', push_url])
+            
+            # Remove existing remotes
+            self._run_command(['git', 'remote', 'remove', 'origin'], check=False)
+            self._run_command(['git', 'remote', 'remove', 'hf'], check=False)
+            
+            # Add new remote
+            add_remote = self._run_command(
+                ['git', 'remote', 'add', 'hf', push_url],
+                capture_output=True,
+                text=True
+            )
+            print("Remote add result:", add_remote.stdout or add_remote.stderr)
+            
+            # Verify remote was added
+            remote_verify = self._run_command(
+                ['git', 'remote', '-v'],
+                capture_output=True,
+                text=True
+            )
+            print("Remote verification:", remote_verify.stdout)
             
             # Push with verbose output
             print("Pushing to Hugging Face...")
-            push_result = self._run_command(
-                ['git', 'push', '-f', '-v', 'hf', 'main'],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            
-            # Print all output
-            print("\nPush Output:")
-            print(push_result.stdout)
-            print("\nPush Errors:")
-            print(push_result.stderr)
-            
-            if push_result.returncode == 0:
-                print("\n✅ Deployment successful!")
-                print(f"🌐 Visit your space at: {self.api_url}")
-            else:
-                print("\n❌ Push failed!")
-                print("Trying alternative method...")
+            try:
+                # First attempt - using remote
+                push_result = self._run_command(
+                    ['git', 'push', '-f', '-v', 'hf', 'main'],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                print("\nPush Output:")
+                print(push_result.stdout)
+                print("\nPush Errors:")
+                print(push_result.stderr)
                 
-                # Try direct push
-                direct_push = self._run_command(
+            except subprocess.TimeoutExpired:
+                print("\n❌ First push attempt timed out, trying direct URL...")
+                # Second attempt - direct URL
+                push_result = self._run_command(
                     ['git', 'push', '-f', push_url, 'main'],
                     capture_output=True,
                     text=True,
                     timeout=30
                 )
                 print("\nDirect Push Output:")
-                print(direct_push.stdout)
+                print(push_result.stdout)
                 print("\nDirect Push Errors:")
-                print(direct_push.stderr)
+                print(push_result.stderr)
+            
+            if push_result.returncode == 0:
+                print("\n✅ Deployment successful!")
+                print(f"🌐 Visit your space at: {self.api_url}")
+            else:
+                print("\n❌ Push failed!")
+                print(f"Error: {push_result.stderr}")
                 
         except Exception as e:
             print(f"\n❌ Deployment failed: {str(e)}")
