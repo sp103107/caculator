@@ -96,20 +96,44 @@ class HuggingFaceDeployer:
             # Force push to Hugging Face with proper URL encoding
             print("🔄 Pushing to Hugging Face...")
             
-            # Properly format the push URL
+            # Debug: Print token length and first/last characters
+            token_preview = f"{self.token[:4]}...{self.token[-4:]}"
+            print(f"Using token (preview): {token_preview}")
+            
+            # Try direct git command
             push_url = f'https://{self.token}@huggingface.co/spaces/{self.space_name}'
-            push_command = ['git', 'push', '-f', push_url, 'main']
+            print("Attempting push with URL:", push_url.replace(self.token, "TOKEN_HIDDEN"))
             
-            print("Executing push command...")
-            push_result = self._run_command(
-                push_command,
-                capture_output=True,
-                text=True
-            )
+            try:
+                # First attempt: using git command directly
+                push_result = subprocess.run(
+                    ['git', 'push', '-f', '-v', push_url, 'main'],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    cwd=str(self.current_dir)
+                )
+                print("Push attempt 1 output:", push_result.stdout)
+                print("Push attempt 1 errors:", push_result.stderr)
+                
+                if push_result.returncode != 0:
+                    print("First push attempt failed, trying alternative method...")
+                    
+                    # Second attempt: using git remote
+                    self._run_command(['git', 'remote', 'remove', 'hf'])
+                    self._run_command(['git', 'remote', 'add', 'hf', push_url])
+                    
+                    push_result = self._run_command(
+                        ['git', 'push', '-f', 'hf', 'main'],
+                        capture_output=True,
+                        text=True
+                    )
+                    print("Push attempt 2 output:", push_result.stdout)
+                    print("Push attempt 2 errors:", push_result.stderr)
             
-            print("Git push output:", push_result.stdout)
-            if push_result.stderr:
-                print("Git push errors:", push_result.stderr)
+            except subprocess.TimeoutExpired:
+                print("❌ Push timed out after 30 seconds")
+                raise
             
             if push_result.returncode == 0:
                 print("✅ Deployment successful!")
@@ -120,6 +144,7 @@ class HuggingFaceDeployer:
             
         except Exception as e:
             print(f"❌ Deployment failed: {str(e)}")
+            print("Full error details:", str(e.__class__.__name__))
             raise
 
     def check_status(self):
