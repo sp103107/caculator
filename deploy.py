@@ -77,26 +77,37 @@ class HuggingFaceDeployer:
             print("✅ Git repository configured")
             
             # Force add all files
-            self._run_command('git add -A')
+            add_result = self._run_command('git add -A', capture_output=True, text=True)
+            print("Git add result:", add_result.stdout or add_result.stderr)
             
             # Force a commit even if nothing changed
             commit_msg = f"Force deployment {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            self._run_command(['git', 'commit', '-m', commit_msg, '--allow-empty'])
+            commit_result = self._run_command(
+                ['git', 'commit', '-m', commit_msg, '--allow-empty'],
+                capture_output=True,
+                text=True
+            )
+            print("Git commit result:", commit_result.stdout or commit_result.stderr)
             
-            # Force push to Hugging Face
+            # Force push to Hugging Face with verbose output
+            print("🔄 Pushing to Hugging Face...")
             push_url = f'https://{self.token}@huggingface.co/spaces/{self.space_name}'
-            result = self._run_command(
-                ['git', 'push', '-f', push_url, 'main'],
+            push_result = self._run_command(
+                ['git', 'push', '-f', '-v', push_url, 'main'],
                 capture_output=True,
                 text=True
             )
             
-            if result.returncode == 0:
+            print("Git push output:", push_result.stdout)
+            if push_result.stderr:
+                print("Git push errors:", push_result.stderr)
+            
+            if push_result.returncode == 0:
                 print("✅ Deployment successful!")
                 print(f"🌐 Visit your space at: {self.api_url}")
             else:
                 print("❌ Deployment failed!")
-                print(f"Error: {result.stderr}")
+                print(f"Error: {push_result.stderr}")
             
         except Exception as e:
             print(f"❌ Deployment failed: {str(e)}")
