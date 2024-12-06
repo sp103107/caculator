@@ -1,10 +1,11 @@
 import os
 import json
 import subprocess
+import requests
 from pathlib import Path
 from getpass import getpass
-import requests
 from datetime import datetime
+import time
 
 class HuggingFaceDeployer:
     def __init__(self):
@@ -20,23 +21,28 @@ class HuggingFaceDeployer:
             raise ValueError("Token cannot be empty")
         return token
 
-    def _run_git(self, command, **kwargs):
+    def _run_git(self, command, timeout=60, **kwargs):
         """Run git command with proper error handling"""
         try:
+            print(f"Executing: git {' '.join(command)}")
             result = subprocess.run(
-                command,
+                ['git'] + command,
                 cwd=str(self.current_dir),
                 capture_output=True,
                 text=True,
-                timeout=30,
+                timeout=timeout,
                 **kwargs
             )
+            if result.stdout:
+                print("Output:", result.stdout)
+            if result.stderr:
+                print("Errors:", result.stderr)
             return result
         except subprocess.TimeoutExpired:
-            print(f"Command timed out: {' '.join(command)}")
+            print(f"Command timed out after {timeout} seconds")
             raise
         except Exception as e:
-            print(f"Command failed: {' '.join(command)}")
+            print(f"Command failed: git {' '.join(command)}")
             print(f"Error: {str(e)}")
             raise
 
@@ -45,56 +51,56 @@ class HuggingFaceDeployer:
         try:
             print("\n🚀 Starting deployment...")
 
-            # Check what files are being tracked
-            print("\nChecking git status...")
-            status_result = self._run_git(['git', 'status'])
-            print(status_result.stdout)
+            # Configure git
+            print("\nConfiguring git...")
+            self._run_git(['config', 'user.email', "huggingface-deployer@example.com"])
+            self._run_git(['config', 'user.name', "HuggingFace Deployer"])
 
-            # Stage specific files
+            # Remove existing remote
+            print("\nRemoving existing remote...")
+            self._run_git(['remote', 'remove', 'origin'], check=False)
+
+            # Add new remote with token
+            print("\nAdding new remote...")
+            remote_url = f"https://{self.token}@huggingface.co/spaces/{self.space_name}"
+            self._run_git(['remote', 'add', 'origin', remote_url])
+
+            # Verify remote
+            print("\nVerifying remote...")
+            self._run_git(['remote', '-v'])
+
+            # Stage files
             print("\nStaging files...")
-            files_to_track = [
-                'app.py',
-                'deploy.py',
-                'requirements.txt',
-                'static/',
-                'README.md',
-                '.gitignore'
-            ]
+            self._run_git(['add', '-A'])
             
-            for file in files_to_track:
-                try:
-                    self._run_git(['git', 'add', file])
-                    print(f"Added {file}")
-                except Exception as e:
-                    print(f"Warning: Could not add {file}: {str(e)}")
+            # Show status
+            print("\nChecking status...")
+            self._run_git(['status'])
 
-            # Show what's being committed
-            status_after = self._run_git(['git', 'status'])
-            print("\nFiles to be committed:")
-            print(status_after.stdout)
-
-            # Commit changes
+            # Commit
             print("\nCommitting changes...")
             commit_msg = f"Deployment {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            commit_result = self._run_git(['git', 'commit', '-m', commit_msg, '--allow-empty'])
-            print(commit_result.stdout)
+            self._run_git(['commit', '-m', commit_msg, '--allow-empty'])
 
-            # Push to Hugging Face
-            print("\nPushing to Hugging Face...")
-            push_result = self._run_git(
-                ['git', 'push', '-f', 'origin', 'main'],
-                check=True
-            )
-            print(push_result.stdout)
+            # Push with longer timeout
+            print("\nPushing to Hugging Face (this may take a minute)...")
+            try:
+                # First attempt - using git push
+                push_result = self._run_git(['push', '-f', 'origin', 'main'], timeout=120)
+                
+                if push_result.returncode == 0:
+                    print("\n✅ Deployment successful!")
+                    print(f"🌐 Visit your space at: {self.api_url}")
+                    return True
+                else:
+                    print("\n❌ Push failed!")
+                    print("Error output:", push_result.stderr)
+                    return False
 
-            if push_result.returncode == 0:
-                print("\n✅ Deployment successful!")
-                print(f"🌐 Visit your space at: {self.api_url}")
-                return True
-            else:
-                print("\n❌ Push failed!")
-                print("Error output:", push_result.stderr)
-                return False
+            except subprocess.TimeoutExpired:
+                print("\n⚠️ Push timed out, checking space status...")
+                time.sleep(5)  # Wait a bit before checking status
+                return self.check_status()
 
         except Exception as e:
             print(f"\n❌ Deployment failed: {str(e)}")
