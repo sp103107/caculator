@@ -120,6 +120,17 @@ class HuggingFaceDeployer:
             print(f"Error checking status: {str(e)}")
             return None
 
+    def clear_token(self):
+        """Clear the cached token"""
+        try:
+            if self.config_file.exists():
+                os.remove(self.config_file)
+                print("✅ Token cache cleared successfully")
+            else:
+                print("No cached token found")
+        except Exception as e:
+            print(f"❌ Error clearing token: {str(e)}")
+
 if __name__ == "__main__":
     deployer = HuggingFaceDeployer()
     
@@ -130,15 +141,20 @@ if __name__ == "__main__":
         print("\nOptions:")
         print("1. Deploy to Hugging Face")
         print("2. Check deployment status")
-        print("3. Exit")
+        print("3. Clear cached token")
+        print("4. Exit")
         
-        choice = input("\nEnter your choice (1-3): ")
+        choice = input("\nEnter your choice (1-4): ")
         
         if choice == '1':
             deployer.deploy()
         elif choice == '2':
             deployer.check_status()
         elif choice == '3':
+            deployer.clear_token()
+            # Reinitialize deployer to force new token prompt
+            deployer = HuggingFaceDeployer()
+        elif choice == '4':
             print("Goodbye! 👋")
             break
         else:
