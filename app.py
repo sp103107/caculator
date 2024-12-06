@@ -8,11 +8,19 @@ from recipe_instructions import RecipeInstructions
 from datetime import datetime
 import os
 
+# Move page config to top, before any other st commands
+st.set_page_config(
+    page_title="Professional Hydroponic Calculator",
+    page_icon="🌱",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 # Ensure paths work in Streamlit Cloud
 def get_project_root():
     return Path(__file__).parent
 
-# Add this after the imports and before the functions
+# Growth stages definition
 growth_stages = {
     "Seedling": "🌱",
     "Early Veg": "🌿",
@@ -45,26 +53,10 @@ def load_css():
                 </style>
             """, unsafe_allow_html=True)
     except Exception as e:
-        st.error(f"Failed to load CSS: {str(e)}")
-
-def add_logo():
-    st.markdown(
-        """
-        <div style="text-align: center; padding: 20px;">
-            <img src="https://your-logo-url.com/logo.png" width="200">
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        st.warning(f"CSS loading failed: {str(e)}")
 
 def create_layout():
-    st.set_page_config(
-        page_title="Professional Hydroponic Calculator",
-        page_icon="🌱",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-    
+    """Create the main layout without page config"""
     load_css()
     
     # Sidebar for settings
@@ -90,48 +82,9 @@ def create_layout():
         # Version info
         st.markdown("v1.0.0 | © 2024 Professional Hydro")
 
-def display_troubleshooting_guide():
-    st.markdown("""
-    ### 🔧 Troubleshooting Guide
-    
-    <div class="troubleshooting-card">
-        <table class="guide-table">
-            <thead>
-                <tr>
-                    <th>Issue</th>
-                    <th>Solution</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr class="guide-row warning">
-                    <td>High EC</td>
-                    <td>Dilute with fresh water, recheck after circulation</td>
-                </tr>
-                <tr class="guide-row warning">
-                    <td>Low EC</td>
-                    <td>Add nutrients proportionally to reach target</td>
-                </tr>
-                <tr class="guide-row caution">
-                    <td>pH Fluctuation</td>
-                    <td>Allow solution to stabilize before final adjustment</td>
-                </tr>
-                <tr class="guide-row danger">
-                    <td>Precipitation</td>
-                    <td>Mix more slowly, ensure proper order of addition</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    """, unsafe_allow_html=True)
-
 def main():
-    st.set_page_config(
-        page_title="Hydroponic Calculator",
-        page_icon="🌱",
-        layout="wide"
-    )
-    
-    load_css()
+    # Remove duplicate page_config call
+    # st.set_page_config() - REMOVE THIS LINE
     
     # Initialize strain API without requiring secrets
     strain_api = StrainAPI()

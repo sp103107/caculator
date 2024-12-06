@@ -8,32 +8,8 @@ import requests
 
 class StrainAPI:
     def __init__(self):
-        # Initialize cache in session state if not exists
-        if 'strain_cache' not in st.session_state:
-            st.session_state.strain_cache = {}
-        
-        # Cache timeout in minutes
-        self.cache_timeout = 30
-        
-        # API configuration
-        self.api_base_url = "http://localhost:8000/api"  # Update with your actual API URL
-        
-        # Load local database as fallback
-        self.strains_db = self._load_local_database()
-        
-        # Load categories
-        self.categories = self._load_categories()
-
-    def _load_categories(self) -> List[str]:
-        """Load strain categories from API or fallback to defaults"""
-        try:
-            response = requests.get(f"{self.api_base_url}/categories")
-            if response.status_code == 200:
-                return response.json().get('categories', [])
-        except Exception as e:
-            st.warning(f"Using default categories: {str(e)}")
-        
-        return [
+        # Initialize with default data, no API connection required
+        self.categories = [
             "Flavor Focused",
             "High THC",
             "Medical",
@@ -41,51 +17,63 @@ class StrainAPI:
             "Autoflower",
             "High Yield"
         ]
+        
+        # Load local database
+        self.strains_db = self._load_local_database()
+        
+        # Initialize cache in session state if not exists
+        if 'strain_cache' not in st.session_state:
+            st.session_state.strain_cache = {}
 
     def _load_local_database(self) -> Dict:
-        """Load local strain database as fallback"""
-        try:
-            db_path = Path(__file__).parent / "data" / "strains_db.json"
-            if db_path.exists():
-                with open(db_path) as f:
-                    return json.load(f)
-            return self._get_default_strains()
-        except Exception as e:
-            st.warning(f"Using default strains: {str(e)}")
-            return self._get_default_strains()
+        """Load local strain database"""
+        default_strains = {
+            "Northern Lights": {
+                "name": "Northern Lights",
+                "category": "Indica Dominant",
+                "thc_range": "16-21%",
+                "cbd_range": "0.1-0.3%",
+                "flowering_time": "7-8 weeks",
+                "difficulty": "Easy",
+                "feeding_schedule": {
+                    "veg": "Light",
+                    "flower": "Medium",
+                    "notes": "Hardy and forgiving"
+                },
+                "nutrient_sensitivity": "Low",
+                "optimal_ec": {
+                    "early_veg": "0.6-1.0",
+                    "late_veg": "1.0-1.4",
+                    "early_flower": "1.2-1.6",
+                    "mid_flower": "1.4-1.8",
+                    "late_flower": "1.0-1.4"
+                },
+                "optimal_ph": "5.8-6.3"
+            },
+            "Gorilla Glue #4": {
+                "name": "Gorilla Glue #4",
+                "category": "Hybrid",
+                "thc_range": "25-30%",
+                # ... other strain details ...
+            }
+        }
+        return default_strains
 
-    async def search_strains(self, query: str) -> List[Dict]:
-        """Search strains using API with fallback to local database"""
-        try:
-            # Check cache first
-            cache_key = f"search_{query}"
-            if cache_key in st.session_state.strain_cache:
-                cached_data = st.session_state.strain_cache[cache_key]
-                if self._is_cache_valid(cached_data.get('timestamp')):
-                    return cached_data['results']
+    def search_strains(self, query: str) -> List[Dict]:
+        """Search strains by name"""
+        if not query:
+            return list(self.strains_db.values())
             
-            # Try API
-            response = requests.get(
-                f"{self.api_base_url}/search",
-                params={"q": query}
-            )
-            
-            if response.status_code == 200:
-                results = response.json().get('results', [])
-                # Cache results
-                st.session_state.strain_cache[cache_key] = {
-                    'results': results,
-                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                }
-                return results
-            
-            # Fallback to local database
-            return self._search_local_database(query)
-            
-        except Exception as e:
-            st.warning(f"Using local search: {str(e)}")
-            return self._search_local_database(query)
+        query = query.lower()
+        return [
+            strain for strain in self.strains_db.values()
+            if query in strain['name'].lower()
+        ]
 
+    def get_categories(self) -> List[str]:
+        """Get available strain categories"""
+        return self.categories
+    
     def generate_strain(self, category: str) -> Optional[Dict]:
         """Generate a random strain based on category"""
         try:
@@ -111,18 +99,6 @@ class StrainAPI:
             if strain['category'] == category
         ]
         return random.choice(matching_strains) if matching_strains else None
-
-    def _search_local_database(self, query: str) -> List[Dict]:
-        """Search in local database"""
-        query = query.lower()
-        return [
-            strain for strain in self.strains_db.values()
-            if query in strain['name'].lower()
-        ]
-
-    def get_categories(self) -> List[str]:
-        """Get available strain categories"""
-        return self.categories
 
     def get_strain_details(self, strain_name: str) -> Optional[Dict]:
         """Get detailed information about a specific strain"""
