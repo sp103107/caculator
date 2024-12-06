@@ -21,10 +21,14 @@ class HuggingFaceDeployer:
         if self.config_file.exists():
             with open(self.config_file, 'r') as f:
                 config = json.load(f)
-                return config.get('token')
+                token = config.get('token')
+                if token and token.strip():  # Verify token is not empty or whitespace
+                    return token.strip()
         
-        # If no cached token, ask user
-        token = getpass("Enter your Hugging Face token: ")
+        # If no valid cached token, ask user
+        token = getpass("Enter your Hugging Face token: ").strip()
+        if not token:
+            raise ValueError("Token cannot be empty")
         self._cache_token(token)
         return token
 
@@ -89,11 +93,16 @@ class HuggingFaceDeployer:
             )
             print("Git commit result:", commit_result.stdout or commit_result.stderr)
             
-            # Force push to Hugging Face with verbose output
+            # Force push to Hugging Face with proper URL encoding
             print("🔄 Pushing to Hugging Face...")
+            
+            # Properly format the push URL
             push_url = f'https://{self.token}@huggingface.co/spaces/{self.space_name}'
+            push_command = ['git', 'push', '-f', push_url, 'main']
+            
+            print("Executing push command...")
             push_result = self._run_command(
-                ['git', 'push', '-f', '-v', push_url, 'main'],
+                push_command,
                 capture_output=True,
                 text=True
             )
